@@ -1,2 +1,5 @@
-cakephp
-=======
+<?php
+
+echo "hello";
+
+?>
