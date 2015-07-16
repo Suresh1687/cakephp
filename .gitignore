@@ -874,4 +874,151 @@ class PracticeArea extends AppModel {
          <?php echo $this->element('admin/header'); ?>   
          
          
-        -----------------------------------------------
+        -------------------------------------------------------------------------
+        
+        
+        <?php
+if (isset($_COOKIE['cookie_muname'])) {
+    $uname = $_COOKIE['cookie_muname']; //$this->Cookie->read('cookie_uname');
+    $pwd = $_COOKIE['cookie_mupword']; //$this->Cookie->read('cookie_pword');
+    $checked = "checked";
+//    echo $uname.$pwd;
+//    exit;
+} else {
+    $uname = "";
+    $pwd = "";
+    $checked = "";
+}
+?>
+        <div class="form-box" id="login-box">
+        	<div align="center">
+        	<img src="<?php echo BASE_URL;?>img/logo.png" class="img-responsive"/>
+        	</div>
+            <div class="header">Sign In</div>
+            <form  method="post" class="styled">
+                <div class="body bg-gray">
+                      <?php echo $this->Session->flash(); ?>
+                    <div class="form-group">
+                        <input type="text" name="email" id="email" class="form-control text-input required email" placeholder="User Email" value="<?php echo $uname; ?>" autocomplete="off"/>
+                        <input type="text" style="display: none;" />
+                    </div>
+                     <input type="password" style="display: none;" />
+                    <div class="form-group">
+                        <input type="password" name="password" id="password" class="form-control text-input required password" placeholder="Password" value="<?php echo $pwd; ?>" autocomplete="off"/>
+                       
+                    </div>          
+                    <div class="form-group">
+                        <input type="checkbox" name="remember_me" id="remember_me" <?php echo $checked;?>/> Remember me
+                    </div>
+                </div>
+                <div class="footer">                                                               
+                    <button type="submit" class="btn-submit btn btn-success btn-block">Sign me in</button>  
+                    
+                     <p><a href="<?php echo BASE_URl.'Users/forgot_password' ?>">I forgot my password</a></p>
+                    
+<!--                    <a href="register.html" class="text-center">New user registration</a>-->
+                </div>
+            </form>
+<!--
+            <div class="margin text-center">
+                <span>Sign in using social networks</span>
+                <br/>
+                <button class="btn bg-light-blue btn-circle"><i class="fa fa-facebook"></i></button>
+                <button class="btn bg-aqua btn-circle"><i class="fa fa-twitter"></i></button>
+                <button class="btn bg-red btn-circle"><i class="fa fa-google-plus"></i></button>
+
+            </div>-->
+        </div>
+          <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>                   
+        <script type="text/JavaScript">
+$(document).ready(function() { 
+
+	$('.btn-submit').click(function(e){
+	
+		// Declare the function variables:
+		// Parent form, form URL, email regex and the error HTML
+		var $formId = $(this).parents('form');
+		var formAction = $formId.attr('action');
+		var emailReg = /^([\w-\.]+@([\w-]+\.)+[\w-]{2,4})?$/;
+		var $error = $('<span class="error"></span>');
+
+		// Prepare the form for validation - remove previous errors
+		$('li',$formId).removeClass('error');
+		$('span.error').remove();
+
+		// Validate all inputs with the class "required"
+		$('.required',$formId).each(function(){
+			var inputVal = $(this).val();
+			var $parentTag = $(this).parent();
+			if(inputVal == ''){
+				$parentTag.addClass('error').append($error.clone().text('Required Field'));
+			}
+			
+			// Run the email validation using the regex for those input items also having class "email"
+			if($(this).hasClass('email') == true){
+				if(!emailReg.test(inputVal)){
+					$parentTag.addClass('error').append($error.clone().text('Please enter valid email address'));
+				}
+			}
+			
+			// Check passwords match for inputs with class "password"
+			if($(this).hasClass('password') == true){
+				var password1 = $('#password-1').val();
+				var password2 = $('#password-2').val();
+				if(password1 != password2){
+				$parentTag.addClass('error').append($error.clone().text('Passwords must match'));
+				}
+			}
+		});
+
+		// All validation complete - Check if any errors exist
+		// If has errors
+		if ($('span.error').length > 0) {
+			
+			$('span.error').each(function(){
+				
+				// Set the distance for the error animation
+				var distance = 5;
+				
+				// Get the error dimensions
+				var width = $(this).outerWidth();
+				
+				// Calculate starting position
+				var start = width + distance;
+				
+				// Set the initial CSS
+				$(this).show().css({
+					display: 'block',
+					opacity: 0,
+					right: -start+'px'
+				})
+				// Animate the error message
+				.animate({
+					right: -width+'px',
+					opacity: 1
+				}, 'slow');
+				
+			});
+		} else {
+			$formId.submit();
+		}
+		// Prevent form submission
+			e.preventDefault();
+	});
+	
+	// Fade out error message when input field gains focus
+	$('.required').focus(function(){
+		var $parent = $(this).parent();
+		$parent.removeClass('error');
+		$('span.error',$parent).fadeOut();
+	});
+});
+</script>
+
+
+
+
+        
+        
+        
+        
