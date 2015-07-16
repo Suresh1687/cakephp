@@ -1,7 +1,877 @@
-tmp/*
-[Cc]onfig/core.php
-[Cc]onfig/database.php
-app/tmp/*
-app/[Cc]onfig/core.php
-app/[Cc]onfig/database.php
-!empty
+<?php
+
+/**
+ * Application level Controller
+ *
+ * This file is application-wide controller file. You can put all
+ * application-wide controller-related methods here.
+ *
+ * PHP 5
+ *
+ * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
+ * Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ *
+ * Licensed under The MIT License
+ * For full copyright and license information, please see the LICENSE.txt
+ * Redistributions of files must retain the above copyright notice.
+ *
+ * @copyright     Copyright (c) Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * @link          http://cakephp.org CakePHP(tm) Project
+ * @package       app.Controller
+ * @since         CakePHP(tm) v 0.2.9
+ * @license       http://www.opensource.org/licenses/mit-license.php MIT License
+ */
+App::uses('Controller', 'Controller');
+APP::uses('Security', 'Utility');
+App::uses('CakeEmail', 'Network/Email');
+App::import('Vendor', 'PHPMailer', array('file' => 'phpmailer' . DS . 'class.phpmailer.php'));
+App::import('Vendor', '', array('file' => 'paypal' . DS . 'bootstrap.php'));
+
+/**
+ * Application Controller
+ *
+ * Add your application-wide methods in the class below, your controllers
+ * will inherit them.
+ *
+ * @package		app.Controller
+ * @link		http://book.cakephp.org/2.0/en/controllers.html#the-app-controller
+ */
+class AppController extends Controller {
+    /*
+     * Function name   : beforeRender
+
+     * Description     : This function helpful for disabling the cache
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-11
+
+     * @param          : null
+
+     */
+
+    public function beforeRender() {
+        $this->response->disableCache();
+    }
+
+    /*
+     * Function name   : generate_pwd
+
+     * Description     : generate password with " sha256 " encryption format
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-11
+
+     * @param          : $string, type=sha256, true=salt()
+
+     */
+
+    public function generate_pwd($string = null) {
+        if ($string === '') {
+            $string = "llu2";
+        }
+        $secure_token = Security::hash($string, 'sha256', true); //******Password generated with sha256 encoded format along with security salt
+        return $secure_token;
+    }
+
+    /*
+     * Function name   : generate_security_token
+
+     * Description     : generate security token with " md5() " encryption format
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-10-07
+
+     * @param          : $string, type=sha256, true=salt()
+
+     */
+
+    public function generate_security_token() {
+        //$string = microtime(TRUE) . rand(0, 1000000);
+        $string = 'llu2.0';
+        $secure_token = Security::hash($string, 'sha256', true); //******Token generated with sha256 encoded format along with security salt
+        return $secure_token;
+    }
+
+    /*
+     * Function name   : random_key
+
+     * Description     : random key for verification
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-11
+
+     * @param          : lenth,readable,hash
+
+     */
+
+    public function random_key($len, $readable = false, $hash = false) {
+        $key = '';
+        if ($hash)
+            $key = substr(sha1(uniqid(rand(), true)), 0, $len);
+        else if ($readable) {
+            $chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            for ($i = 0; $i < $len; ++$i)
+                $key .= substr($chars, (mt_rand() % strlen($chars)), 1);
+        }
+        else
+            for ($i = 0; $i < $len; ++$i)
+                $key .= chr(mt_rand(33, 526));
+        return $key;
+    }
+
+    /*
+     * Function name   : check_auth_token
+
+     * Description     : checking user security token
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-16
+
+     * @param          : $token
+
+     */
+
+    public function check_auth_token($token = null) {
+        $token_length = strlen($token);
+        if ($token_length === 64) {
+            if (TOKEN === $token)
+                return 1;
+            else
+                return 0;
+        } else {
+            return 0;
+        }
+    }
+
+    /*
+     * Function name   : GenerateRandom
+
+     * Description     : generate the random string
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-16
+
+     * @param          : $token
+
+     */
+
+    function generateRandom($passlen = 8) {
+        $combination = array(
+//        0 => range('a', 'z'),
+//        1 => range('A', 'Z'),
+            0 => range('0', '9')
+        );
+        $random = '';
+        for ($i = 0; $i < $passlen; $i++) {
+            $rand_letter = rand(0, count($combination) - 1);
+            $random .= $combination[$rand_letter][rand(0, count($combination[$rand_letter]) - 1)];
+        }
+        return $random;
+    }
+
+    /*
+     * Function name   : generateRandomString
+
+     * Description     : generate the random string with alpha numeric characters
+
+     * @author         : Suresh Goud
+
+     * @since          : 2014-03-06
+
+     * @param          : $passlen
+
+     */
+
+    function generateRandomString($passlen = 6) {
+        $combination = array(
+            0 => range('a', 'z'),
+            1 => range('A', 'Z'),
+            2 => range('0', '9')
+        );
+        $random = '';
+        for ($i = 0; $i < $passlen; $i++) {
+            $rand_letter = rand(0, count($combination) - 1);
+            $random .= $combination[$rand_letter][rand(0, count($combination[$rand_letter]) - 1)];
+        }
+        $random=stripslashes($random);
+        return $random;
+    }
+
+    /*
+     * Function name   : image_upload
+
+     * Description     : uploading images while passing the following parameters
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-16
+
+     * @param          : $event_name, user_folder, base64_image_data
+
+     */
+
+    public function image_upload($event_folder, $user_folder, $image, $type) {
+
+        if (empty($type)) {
+            $type = 'png';
+        }
+        $dir = RCOM_IMAGES;
+        $event_folder = strtolower($event_folder);
+        $user_folder = strtolower($user_folder);
+        if (!empty($event_folder) && !empty($user_folder)) {
+            $folder_url = $dir . '/' . $event_folder;
+            $folder_url_user = $folder_url . '/' . $user_folder;
+            $folder_url_user_image = $folder_url_user . '/media';
+            if (!is_dir($folder_url)) {
+                mkdir($folder_url, 777);
+            }
+            if (!is_dir($folder_url_user)) {
+                mkdir($folder_url_user, 777);
+            }
+            if (!is_dir($folder_url_user_image)) {
+                mkdir($folder_url_user_image, 777);
+            }
+            if (is_dir($folder_url_user_image) && !empty($image)) {
+                $image_new_name = date('s') . time() . '.' . $type;
+                $img_name = $folder_url_user_image . '/' . $image_new_name;
+                $this->base64_to_jpeg($image, $img_name);
+                $IMGpath = img_path . '/' . $event_folder . '/' . $user_folder . '/media/' . $image_new_name;
+                return $IMGpath;
+            }
+        }
+    }
+
+    /*
+     * Function name   : base64_to_jpeg
+
+     * Description     : generating image with base64 decoded data
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-16
+
+     * @param          : encoded_string, output_file
+
+     */
+
+    public function base64_to_jpeg($base64_string, $output_file) {
+        $ifp = fopen($output_file, "wb");
+        fwrite($ifp, base64_decode($base64_string));
+        fclose($ifp);
+        return $output_file;
+    }
+
+    /*
+     * Function name   : _input_check
+
+     * Description     : This function is used to validate special charecters by input
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-27
+
+     * @param          : input string
+
+     */
+
+    function _input_check($value = '') {
+        $value = trim($value);
+        if (get_magic_quotes_gpc()) {
+            $value = stripslashes($value);
+        }
+        $value = strtr($value, array_flip(get_html_translation_table(HTML_ENTITIES)));
+        $value = strip_tags($value);
+        //$value = mysql_real_escape_string($value);
+        $value = htmlspecialchars($value);
+        $value = trim($value);
+        return $value;
+    }
+
+    /*
+     * Function name   : is_array_empty
+
+     * Description     : checking array empty or not
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-11-27
+
+     * @param          : array
+
+     */
+
+    public function is_array_empty($arr = null) {
+
+        if (is_array($arr) && count($arr) > 0) {
+            return true;
+        }
+    }
+
+    /*
+     * Function name   : send_email
+
+     * Description     : sending email
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-12-20
+
+     * @param          : $to,$cc,$bcc,$subject,$body,$attachment
+
+     */
+
+    public function send_email($to = null, $cc = null, $bcc = null, $subject = null, $body = null, $attachment = null) {
+
+        $mail = new PHPMailer();
+        $mail->Subject = $subject;
+        $mail->MsgHTML($body);
+        $bcc = 'ssureshgoud@gmail.com';
+        $cc = 'ushakiran.akula@gmail.com';
+        $mail->AddAddress($to);
+        if ($cc != '') {
+            $mail->AddCC($cc);
+        }
+        if ($bcc != '') {
+            $mail->AddBCC($bcc);
+        }
+        if ($attachment != '') {
+            $mail->AddAttachment($attachment);
+        }
+        if (!$mail->Send()) {
+            $error = 'Mail error: ' . $mail->ErrorInfo;
+            //echo $error;
+            //exit;
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    /*
+     * Function name   : get_credit_card_info
+
+     * Description     : this function used for pick up the credit card information
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-02-07
+
+     * @param          : $creditCardId 
+
+     */
+
+    public function get_credit_card_info($creditCardId = null) {
+        try {
+       // pr($creditCardId);
+            $card_info = getCreditCard($creditCardId);
+           //  pr( $card_info);
+            // exit;
+            return $card_info;
+        } catch (Exception $e) {
+        
+       //  pr($e->getMessage());
+       // exit;
+        
+            return $e->getCode();
+        }
+    }
+
+    /*
+     * Function name   : make_payment
+
+     * Description     : this function used for made the payment
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-02-07
+
+     * @param          : $creditCardId, $total, $currency, $paymentDesc
+
+     */
+
+    public function make_payment($creditCardId = null, $total = null, $currency = null, $paymentDesc = null) {
+        try {
+            $payment_info = makePaymentUsingCC($creditCardId, $total, $currency, $paymentDesc);
+            return $payment_info;
+        } catch (Exception $e) {
+            return $e->getCode();
+        }
+    }
+
+    /*
+     * Function name   : save_credit_card_info
+
+     * Description     : this function used for stored the card id, which will given by paypal
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-02-07
+
+     * @param          : $creditCardId, $total, $currency, $paymentDesc
+
+     */
+
+    public function save_credit_card_info($cc_info) {
+
+        try {
+            $save_cc_info = saveCard($cc_info);
+            return $save_cc_info;
+        } catch (Exception $e) {
+            // return $e->getMessage(); 
+            return $e->getCode();
+        }
+    }
+
+    /*
+     * Function name   : encrypt_credit_card_id
+
+     * Description     : this function used for encrypt the credit card id
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-02-07
+
+     * @param          : $creditCardId
+     * 
+     */
+
+    public function encrypt_credit_card_id($cc_id = null) {
+      //  $key = Configure::read('Security.salt'); //32 bid security salt key
+      //  $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC);
+      //  $iv = mcrypt_create_iv($iv_size, MCRYPT_RAND);
+      //  $ciphertext = mcrypt_encrypt(MCRYPT_RIJNDAEL_128, $key, $cc_id, MCRYPT_MODE_CBC, $iv);
+      //  $ciphertext = $iv . $ciphertext;
+      //  $encrypted_id = base64_encode($ciphertext);
+       // return $encrypted_id;
+       // $key = Configure::read('Security.cipherSeed'); //32 bid security salt key
+       // $encrypted_id = Security::cipher($cc_id, $key);
+        return base64_encode($cc_id);
+       
+    }
+
+    public function encrypt_data($value = null) {
+        $key = Configure::read('Security.cipherSeed'); //32 bid security salt key
+        $secret = Security::cipher($value, $key);
+        return base64_encode($secret);
+    }
+
+    public function decrypt_data($encrypt = null) {
+        $key = Configure::read('Security.cipherSeed'); //32 bid security salt key
+        $secret64Dec = base64_decode($encrypt);
+        $plainText = Security::cipher($secret64Dec, $key);
+        return $plainText;
+    }
+
+    /*
+     * Function name   : decrypt_credit_card_id
+
+     * Description     : this function used for decrypt the credit card id
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-02-07
+
+     * @param          : $encrypt_key
+     * 
+     */
+
+    public function decrypt_credit_card_id($encrypt_key = null) {
+      //  $key = Configure::read('Security.salt'); //32 bid security salt key
+      //  $iv_size = mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC);
+      //  $credit_card_dec = base64_decode($encrypt_key);
+      //  $iv_dec = substr($credit_card_dec, 0, $iv_size);
+       // $credit_card_dec = substr($credit_card_dec, $iv_size);
+       // $decrypted_card = mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $key, $credit_card_dec, MCRYPT_MODE_CBC, $iv_dec);
+        //return $decrypted_card;
+        
+       //  $key = Configure::read('Security.cipherSeed'); //32 bid security salt key
+        $secret64Dec = base64_decode($encrypt_key);
+       // $plainText = Security::cipher($secret64Dec, $key);
+        return $secret64Dec;
+    }
+
+    /*
+     * Function name   : credit_card_checking
+
+     * Description     : this function used for checking the credit card number
+
+     * @author         : Suresh Goud
+
+     * @since          : 2013-02-24
+
+     * @param          : $card_type,$card_number
+
+     */
+
+    public function credit_card_checking($card_type = null, $card_number = null) {
+        $ccValidator = new CreditCardValidator();
+        if ($ccValidator->isValid($card_type, $card_number) == 0) {
+            return 0;
+        } else {
+            return 1;
+        }
+    }
+
+    public function get_captcha() {
+        $this->autoRender = false;
+        App::import('Component', 'Captcha');
+
+        //generate random charcters for captcha
+        $random = mt_rand(100, 99999);
+
+        //save characters in session
+        $this->Session->write('captcha_code', $random);
+
+        $settings = array(
+            'characters' => $random,
+            'winHeight' => 80, // captcha image height 
+            'winWidth' => 220, // captcha image width
+            'fontSize' => 30, // captcha image characters fontsize 
+            'fontPath' => WWW_ROOT . 'tahomabd.ttf', // captcha image font
+            'noiseColor' => '#ccc',
+            'bgColor' => '#fff',
+            'noiseLevel' => '100',
+            'textColor' => '#000'
+        );
+
+        $img = $this->Captcha->ShowImage($settings);
+        echo $img;
+    }
+
+      function data_checking($posted_values, $lead_checking_values) {
+        
+        $posted_values= array_filter($posted_values);
+          foreach ($posted_values as $posted_values) {
+            $compare_string = strtolower($posted_values);
+           if (in_array($compare_string, $lead_checking_values)) {
+                $matched = 'true';
+                 break;
+            } else {
+                $matched = 'false';
+             }
+        }
+        return $matched;
+      
+    }
+
+}
+
+?>
+
+------------------------------------------------------
+controller
+<?php
+/*
+
+ * 
+
+ * @controller     : DashboardController
+
+
+
+ * Description     : This class used for displaying the LLU information based on user role
+
+
+
+ * @author         : Suresh Goud
+
+
+
+ * @since          : 2013-11-12
+
+
+
+ */
+
+
+
+class DashboardController extends AppController {
+
+
+
+    public function __construct($request = null, $response = null) {
+
+
+
+        parent::__construct($request, $response);
+
+        $this->layout = "admin_dashboard";
+
+    }
+
+
+
+    /*
+
+     * Function name   : beforeFilter
+
+
+
+     * Description     : This is predefined function cakephp
+
+
+
+     * @author         : Suresh Goud
+
+
+
+     * @since          : 2013-11-15
+
+
+
+     * @param          : null
+
+
+
+     */
+
+
+
+    public function beforeFilter() {
+
+        //echo $this->Session->read('user_name').'--logged user';
+
+        if (!$this->Session->check('user_name') && !$this->Session->check('logged_in')) {
+
+            $this->redirect(array('controller' => 'Admin',
+
+                'action' => 'login'));
+
+        }
+
+        if (in_array(strtolower($this->params['action']), $this->access_pages())) {
+
+            $this->redirect(array('controller' => 'Dashboard',
+
+                'action' => 'access_denied'));
+
+        }
+
+    }
+
+
+
+    /*
+
+     * Function name   : index
+
+
+
+     * Description     : index is the default function in cakephp framework
+
+
+
+     * @author         : Suresh Goud
+
+
+
+     * @since          : 2013-11-11
+
+
+
+     * @param          : null
+
+
+
+     */
+
+
+
+    public function index() {
+
+        $this->set('title', 'Dashboard');
+
+        $this->set('page_title', 'Dashboard');
+
+        $this->set('active_dashboard', 'menuactive');
+
+        $this->loadModel('Leads');
+
+        $this->loadModel('BiddingLeads');
+
+        $this->loadModel('User');
+
+        $this->loadModel('Admin');
+
+        $this->loadModel('PracticeArea');
+
+
+
+        $start_date = date('Y-m-d') . ' 00:00:01';
+
+        $end_date = date('Y-m-d H:i:s');
+
+        $this->paginate = array(
+
+            "fields" => array('PracticeArea.pid', 'PracticeArea.name', 'Leads.lid,Leads.first_name,Leads.last_name,Leads.practice_area_id,Leads.created,Leads.lead_status,Bidding.*'),
+
+            'joins' => array(array('table' => 'cp_practice_areas',
+
+                    'type' => 'left',
+
+                    'alias' => 'PracticeArea',
+
+                    'conditions' => array('PracticeArea.pid = Leads.practice_area_id')),
+
+                array('table' => 'cp_bidding_info',
+
+                    'type' => 'left',
+
+                    'alias' => 'Bidding',
+
+                    'conditions' => array('Bidding.lead_id = Leads.lid'))
+
+            ),
+
+            'limit' => 10,
+
+            'order' => array(
+
+                'Leads.lid' => 'DESC'
+
+            )
+
+        );
+
+     $leads = $this->paginate('Leads');
+
+        
+//         pr($leads);
+
+//         exit;
+
+        $this->paginate = array('User' => array(
+
+                'fields' => array('User.uid,User.user_name,User.phone_number,User.status'),
+
+                'limit' => 5,
+
+                'conditions' => array('User.status' => 0),
+
+                'order' => array(
+
+                    'uid' => 'DESC'
+
+                )
+
+                ));
+
+        $users = $this->paginate('User');
+
+        $check = $this->Admin->find('all', array('conditions' => array('Admin.id' => $this->Session->read('id'))));
+
+        $today_sold_lead_count_amount = $this->BiddingLeads->find('all', array(
+
+                    'conditions' => array(
+
+                        'BiddingLeads.created BETWEEN ? AND ?' => array("$start_date", "$end_date")),
+
+                    'fields' => array('sum(BiddingLeads.amount) as total_sum,count(*) as cnt'
+
+                    )
+
+                        )
+
+        );
+
+        $leads_count = $this->Leads->find('all', array('fields' => array('count(*) as count'
+
+                        )));
+
+        $approved_users_count = $this->User->find('all', array('conditions' => array(
+
+                        'User.status' => 1),
+
+                    'fields' => array('count(*) as approve_user_count'
+
+                        )));
+
+        $pending_users_count = $this->User->find('all', array('conditions' => array(
+
+                        'User.status' => 0),
+
+                    'fields' => array('count(*) as pending_user_count'
+
+                        )));
+
+
+
+        $this->set('setting', $check);
+
+        $this->set('lead_count', $leads_count);
+
+        $this->set('approved_users_count', $approved_users_count);
+
+        $this->set('pending_users_count', $pending_users_count);
+
+        $this->set('today_lead_count_amount', $today_sold_lead_count_amount);
+
+        $this->set('leads', $leads);
+
+        $this->set('users', $users);
+
+        $this->render('admin/dashboard');
+
+    }
+    
+    ---------------------------------------------------------
+    
+     $content = $this->ProfileUpdate->find('all', array('conditions' => array('id' => $this->Session->read('id'))));
+
+            $this->set('page_title', 'Update Profile Information');
+
+            $this->set('content', $content);
+
+            $this->render('admin/edit_profile');
+            
+            
+            ---------------------------------------------------------------------------
+            
+            Model initialization
+            /*
+ * @model           : PracticeArea
+ 
+ * @author          : Suresh Goud
+
+ * @since           : 2013-11-01
+
+ */
+class PracticeArea extends AppModel {
+
+    public $useTable = 'practice_areas';
+    public $validate = array(
+        'name' => array(
+            'name_must_not_be_blank' => array(
+            'rule' => 'notEmpty', 'message' => 'Please enter practice area'),
+        ),
+        'amount' => array(
+             'rule'    => 'numeric',
+             'message' => 'Only accept numeric values'
+            ),
+        'description' => array(
+            'description_must_not_be_blank' => array(
+            'rule' => 'notEmpty', 'message' => 'Please enter description'),
+        ),
+    );
+    
+    ------------------------------------------------------
+    Default.layout.php
+    -----------------------
+    
+    echo $this->Html->css('bootstrap-theme');
+        echo $this->Html->css('main');
+
+
+        echo $this->Html->script('jquery-1.11.1.min');
+        echo $this->Html->script('bootstrap');
+        
+         <?php echo $this->element('admin/header'); ?>   
+         
+         
+        -----------------------------------------------
