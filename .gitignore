@@ -1017,7 +1017,27 @@ $(document).ready(function() {
 
 
 
+DELIMITER $$
 
+USE `test`$$
+
+DROP PROCEDURE IF EXISTS `get_access_pages`$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_access_pages`(IN emp_id VARCHAR(20))
+BEGIN
+DECLARE data_list VARCHAR(1000);
+DECLARE foundcount INT;
+SELECT COUNT(1) INTO foundcount FROM users WHERE emp_code=emp_id;
+IF foundcount > 0 THEN
+SET data_list=(SELECT CONVERT(GROUP_CONCAT(group_id,',',associate_gid) USING utf8) AS glist 
+FROM `access_pages` WHERE group_id IN (SELECT id FROM `group_master` WHERE role_id IN (SELECT role_id FROM users WHERE emp_code=emp_id)));
+SET @query = CONCAT('select * from access_pages where group_id in (',data_list,');');
+PREPARE sql_query FROM @query;
+EXECUTE sql_query;
+END IF;
+END$$
+
+DELIMITER ;
         
         
         
